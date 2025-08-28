@@ -10,7 +10,7 @@ intents.message_content = True
 client = discord.Client(intents=intents)
 tree = discord.app_commands.CommandTree(client)
 
-@tree.command(name="Ping", description="Ping the bot and it will ping back", guilds=[770442539760746526, 1120012114321494088])
+@tree.command(name="ping", description="Ping the bot and it will ping back", guild=discord.Object(id=770442539760746526))
 async def ping(interaction):
     await interaction.response.send_massage("Ping!")
 
@@ -19,8 +19,8 @@ async def on_ready():
     print(f"Logged in as {client.user}")
     await tree.sync(guild=discord.Object(id=770442539760746526))
     print("Commands loaded for testing server")
-    await tree.sync(guild=discord.Object(id=1120012114321494088))
-    print("Commands loaded for Aeronautica ATC server")
+    #await tree.sync(guild=discord.Object(id=1120012114321494088))
+    #print("Commands loaded for Aeronautica ATC server")
 
     print("Loading complete, bot is online")
 

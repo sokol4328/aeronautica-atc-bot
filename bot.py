@@ -58,15 +58,16 @@ async def gen_atis(ctx: discord.Interaction, airport: str, wind: str, temp: str,
         return
     atis: bot_functions.ATIS = bot_functions.ATIS(airport, wind, temp, dewpoint, pressure, clouds, visibility, dispatch_station, dispatch_frequency, runway, dep_runway)
     try:
-        file = open(f"atis_database/{airport.lower()}.atis", "x")
+        file = open(f"atis_database/{airport.lower()}.atis", "xb")
         file.close()
     except FileExistsError as e:
         await ctx.response.send_message(f"An ATIS already exists for {atis.airport.upper()}, try /edit_atis or /delete_atis")
         return
     try:
-        response = await ctx.response.send_message(atis.to_string())
-        atis.channel = ctx.channel_id # type: ignore
-        atis.message = response.message_id  # type: ignore
+        await ctx.response.send_message(atis.to_string())
+        response: discord.InteractionMessage = await ctx.original_response()
+        atis.channel = response.channel.id
+        atis.message = response.id
         file = open(f"atis_database/{airport.lower()}.atis", "wb")
         pickle.dump(obj=atis, file=file)
         file.close()
@@ -90,19 +91,19 @@ async def delete_atis(ctx: discord.Interaction, airport: str):
         await ctx.response.send_message(f"No ATIS exists for {airport.upper()}, use /generate_atis to create one")
 
 @bot.tree.command(name="edit_atis", description="Edit an already existing ATIS", guilds=guilds)
-async def edit_atis(ctx: discord.Interaction, airport: str, option: Literal["wind", "temperature", "dewpoint", "pressure", "clouds", "visibility", "dispatch_station", "dispatch_frequency", "pdc_availability", "server_code"], value: str, update_letter: bool=False):
+async def edit_atis(ctx: discord.Interaction, airport: str, option: Literal["wind", "temperature", "dewpoint", "pressure", "clouds", "visibility", "runway", "departure_runway", "dispatch_station", "dispatch_frequency", "pdc_availability", "server_code"], value: str, update_letter: bool=False):
     try:
         file = open(f"atis_database/{airport.lower()}.atis", "rb")
         atis: bot_functions.ATIS = pickle.load(file)
-        file.close()
-        file = open(f"atis_database/{airport.lower()}.atis", "wb")
-        pickle.dump(obj=atis, file=file)
         file.close()
         atis.edit_atis(option, value)
         channel = await bot.fetch_channel(atis.channel)
         message = await channel.fetch_message(atis.message) # type: ignore
         await message.edit(content=atis.to_string())
         await ctx.response.send_message("Value edited successfully", ephemeral=True, delete_after=5)
+        file = open(f"atis_database/{airport.lower()}.atis", "wb")
+        pickle.dump(obj=atis, file=file)
+        file.close()
     except Exception as e:
         raise e
 
@@ -122,6 +123,21 @@ async def say(ctx: discord.Interaction, message: str, channel_id: str="0"):
     except Exception as e:
         await ctx.response.send_message("An unknown error has occured", ephemeral=True)
         print(e)
+
+@bot.tree.command(name="delete_all_atis", description="Deletes all active ATIS's", guilds=guilds)
+async def delete_all_atis(ctx: discord.Interaction):
+    file_list = os.listdir("atis_database")
+    i = 0
+    for file_name in file_list:
+        file = open(f"atis_database/{file_name}", "rb")
+        atis: bot_functions.ATIS = pickle.load(file)
+        channel = await bot.fetch_channel(atis.channel)
+        message = await channel.fetch_message(atis.message) # type: ignore
+        await message.delete()
+        file.close()
+        os.remove(f"atis_database/{file_name}")
+        i += 1
+    await ctx.response.send_message(f"Successfully deleted {i} ATIS(s)", ephemeral=True)
 
 
 @bot.event

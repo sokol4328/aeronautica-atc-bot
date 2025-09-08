@@ -49,6 +49,10 @@ class ATIS:
                 self.clouds = value
             case "visibility":
                 self.visibility = value
+            case "runway":
+                pass #TODO
+            case "depature_runway":
+                pass #TODO
             case "dispatch_station":
                 self.dispatch_station = value
             case "dispatch_frequency":

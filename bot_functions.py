@@ -15,15 +15,15 @@ class ATIS:
         self.pressure: str = pressure
         self.clouds: str = clouds
         self.visibility: str = visibility
-        self.runways: List[str] = []
+        self.runway: str
         self.approach: str
         if runway.upper()[0:3] == "ILS" or runway.upper()[0:3] == "LOC" or runway.upper()[0:3] == "VOR":
-            self.runways.append(runway[4:])
+            self.runways = runway[4:]
             self.approach = runway.upper()[0:3]
         else:
-            self.runways.append(runway)
+            self.runway = runway
             self.approach = "VISUAL"
-        self.dep_runways: List[str] = []
+        self.dep_runway: str = dep_runway
         self.dispatch_station: str = "UNICOM"
         self.dispatch_freq: str = "122.800"
         self.pdc: str = "UNAVAIL"
@@ -50,9 +50,14 @@ class ATIS:
             case "visibility":
                 self.visibility = value
             case "runway":
-                pass #TODO
+                if value.upper()[0:3] == "ILS" or value.upper()[0:3] == "LOC" or value.upper()[0:3] == "VOR":
+                    self.runways = value[4:]
+                    self.approach = value.upper()[0:3]
+                else:
+                    self.runway = value
+                    self.approach = "VISUAL"
             case "depature_runway":
-                pass #TODO
+                self.dep_runway = value
             case "dispatch_station":
                 self.dispatch_station = value
             case "dispatch_frequency":
@@ -67,13 +72,9 @@ class ATIS:
             atis: str = "`"
             atis += f"{self.airport} ATIS INFO {ATIS.get_info_letter(self.atis_letter)} {get_time_utc()}"
             atis += f"\n{self.wind}KT {self.visibility}SM {self.clouds} {self.temp}/{self.dewpoint} A{self.pressure}"
-            atis += f"\n{self.approach} APCH"
-            for runway in self.runways:
-                atis += f" RWY {runway}"
-            if len(self.dep_runways) != 0:
-                f"\nDEP "
-                for runway in self.dep_runways:
-                    atis += f"{runway} "
+            atis += f"\n{self.approach} APCH RWY {self.runway}"
+            if len(self.dep_runway) != 0:
+                f"\nDEP {self.dep_runway}"
             atis += f"\nREADBACK ALL RUNWAY HOLD SHORT INSTRUCTIONS"
             atis += f"\nCONTACT {self.dispatch_station} ON {self.dispatch_freq} FOR CLNC INSTRUCTIONS"
             atis += f"\nTEXT PILOTS USE `<#1253808325129408552>` | PDC {self.pdc}"

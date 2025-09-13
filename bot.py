@@ -1,6 +1,7 @@
 # My database server id: 770442539760746526
 # Aeronautica ATC server id: 1120012114321494088
 
+from io import BufferedWriter
 import discord
 from discord.ext import commands
 import os
@@ -14,6 +15,7 @@ intents.message_content = True
 guilds: list = [discord.Object(id=1120012114321494088)] #discord.Object(id=770442539760746526),]
 bot: commands.Bot = commands.Bot(command_prefix="!", intents=intents)
 perms = [1175138965054042212, 1175139363961712730]
+loa_list: List[int] = []
 
 def check_permissions(ctx: discord.Interaction, roles: List[int]):
     user_roles: List[discord.Role] = ctx.user.roles # type: ignore
@@ -139,6 +141,51 @@ async def delete_all_atis(ctx: discord.Interaction):
         i += 1
     await ctx.response.send_message(f"Successfully deleted {i} ATIS(s)", ephemeral=True)
 
+@bot.tree.command(name="loa", description="Creates a new LOA notification for you", guilds=guilds)
+async def loa(ctx: discord.Interaction, department: Literal["operations", "events", "moderation", "all"], reason: str=""):
+    loa: bot_functions.LOA = bot_functions.LOA(ctx.user.id, reason)
+    file: BufferedWriter
+    i = 0
+    while i >= 0:
+        try:
+            file = open(f"loa_database/{ctx.user.id}_{i}.loa", "xb")
+            file.close
+            i = (i + 1) * -1
+        except FileExistsError:
+            i = i + 1
+    try:
+        file = open(f"loa_database/{ctx.user.id}_{(i + 1) * -1}.loa", "wb")
+        pickle.dump(loa, file)
+        file.close()
+        await ctx.response.send_message("LOA created successfully", ephemeral=True)
+    except Exception as e:
+        await ctx.response.send_message("Unknown error while writing to database")
+        print(e)
+
+# This function and associated list are for optimization so the LOA database isn't acessed on every message
+def loa_list_load():
+    file_list = os.listdir("loa_database")
+    i: int = 0
+    for file_name in file_list:
+        id: int = int(file_name.split("_")[0])
+        if id not in loa_list:
+            loa_list.append(id)
+            i += 1
+    print(f"LOA list loaded with {i} entries")
+
+def loa_check(message: discord.Message):
+    print(message.content)
+    for user in loa_list:
+        if str(user) in message.content:
+            return True
+    return False
+
+@bot.event
+async def on_message(message: discord.Message):
+    if message.author == bot.user:
+        pass
+    if loa_check(message):
+        await message.reply(content="A staff member pinged in this message is currently on LOA (leave of absence) and may be slow to respond", silent=True)
 
 @bot.event
 async def on_ready():
@@ -146,6 +193,7 @@ async def on_ready():
     for guild in guilds:
         await bot.tree.sync(guild=guild)
         print(f"Commands loaded for guild {guild.id}")
+    loa_list_load()
     print("Loading complete, bot is online")
 
 file = open("token.txt", "r")

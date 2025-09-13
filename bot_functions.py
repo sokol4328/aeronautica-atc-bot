@@ -85,12 +85,14 @@ class ATIS:
             return "WIP"
         else:
             return "Error"
+        
+class LOA:
+    def __init__(self, staff_member: int, reason: str):
+        self.staff_member = staff_member
+        self.reason = reason
 
 def find_frequency(airport: str) -> str:
-    if airport.upper() == "KCIA":
-        return "KCIA WIP"
-    else:
-        return "WIP"
+    return f"{airport.upper()} WIP"
     
 def get_time_utc() -> str:
     return time.strftime("%H%MZ", time.gmtime(time.time()))

@@ -8,14 +8,23 @@ import os
 from typing import List, Literal
 import bot_functions
 import pickle
-import discord.enums
+from enum import Enum
 
 intents = discord.Intents.default()
 intents.message_content = True
 guilds: list = [discord.Object(id=1120012114321494088)] #discord.Object(id=770442539760746526),]
 bot: commands.Bot = commands.Bot(command_prefix="!", intents=intents)
-perms = [1175138965054042212, 1175139363961712730]
 loa_list: List[int] = []
+
+class Permissions(Enum):
+    NONE = []
+    ABASSADOR_ONLY = [1175138965054042212]
+    DIRECTORS_ONLY = [1175138965054042212, 1180831972440944750]
+    STAFF_ONLY = [1292556748774838405]
+    CONTROLLERS_ONLY = [1168202336942948393]
+    VERIFIED = [1120128265668022292]
+
+
 
 def check_permissions(ctx: discord.Interaction, roles: List[int]):
     user_roles: List[discord.Role] = ctx.user.roles # type: ignore
@@ -27,35 +36,35 @@ def check_permissions(ctx: discord.Interaction, roles: List[int]):
 
 @bot.tree.command(name="ping", description="Ping the bot and it will ping back", guilds=guilds)
 async def ping(ctx: discord.Interaction):
-    if not check_permissions(ctx, perms):
+    if not check_permissions(ctx, Permissions.VERIFIED):
         await ctx.response.send_message("You do not have permission to use this command", ephemeral=True)
         return
     await ctx.response.send_message("Pong!")
 
 @bot.tree.command(name="positions", description="Find all the positions that control an airport", guilds=guilds)
 async def find_frequency(ctx: discord.Interaction, airport: str):
-    if not check_permissions(ctx, perms):
+    if not check_permissions(ctx, Permissions.ABASSADOR_ONLY):
         await ctx.response.send_message("You do not have permission to use this command", ephemeral=True)
         return
     await ctx.response.send_message(bot_functions.find_frequency(airport))
 
 @bot.tree.command(name="utc", description="Find the current time in UTC", guilds=guilds)
 async def send_time_utc(ctx: discord.Interaction):
-    if not check_permissions(ctx, perms):
+    if not check_permissions(ctx, Permissions.VERIFIED):
         await ctx.response.send_message("You do not have permission to use this command", ephemeral=True)
         return
     await ctx.response.send_message(bot_functions.get_time_utc())
 
 @bot.tree.command(name="squawk", description="Generate a random sqawk code", guilds=guilds)
 async def squawk(ctx: discord.Interaction):
-    if not check_permissions(ctx, perms):
+    if not check_permissions(ctx, Permissions.CONTROLLERS_ONLY):
         await ctx.response.send_message("You do not have permission to use this command", ephemeral=True)
         return
     await ctx.response.send_message(bot_functions.generate_squawk())
 
 @bot.tree.command(name="generate_atis", description="Generates an ATIS from input information", guilds=guilds)
 async def gen_atis(ctx: discord.Interaction, airport: str, wind: str, temp: str, dewpoint: str, pressure:str, clouds: str, visibility: str, runway: str, dispatch_station: str = "UNICOM", dispatch_frequency: str = "122.800", dep_runway: str = ""):
-    if not check_permissions(ctx, perms):
+    if not check_permissions(ctx, Permissions.CONTROLLERS_ONLY):
         await ctx.response.send_message("You do not have permission to use this command", ephemeral=True)
         return
     atis: bot_functions.ATIS = bot_functions.ATIS(airport, wind, temp, dewpoint, pressure, clouds, visibility, dispatch_station, dispatch_frequency, runway, dep_runway)
@@ -80,7 +89,7 @@ async def gen_atis(ctx: discord.Interaction, airport: str, wind: str, temp: str,
     
 @bot.tree.command(name="delete_atis", description="Deletes an ATIS for an airport", guilds=guilds)
 async def delete_atis(ctx: discord.Interaction, airport: str):
-    if not check_permissions(ctx, perms):
+    if not check_permissions(ctx, Permissions.CONTROLLERS_ONLY):
         await ctx.response.send_message("You do not have permission to use this command", ephemeral=True)
         return
     if os.path.exists(f"atis_database/{airport.lower()}.atis"):
@@ -94,6 +103,9 @@ async def delete_atis(ctx: discord.Interaction, airport: str):
 
 @bot.tree.command(name="edit_atis", description="Edit an already existing ATIS", guilds=guilds)
 async def edit_atis(ctx: discord.Interaction, airport: str, option: Literal["wind", "temperature", "dewpoint", "pressure", "clouds", "visibility", "runway", "departure_runway", "dispatch_station", "dispatch_frequency", "pdc_availability", "server_code"], value: str, update_letter: bool=False):
+    if not check_permissions(ctx, Permissions.CONTROLLERS_ONLY):
+        await ctx.response.send_message("You do not have permission to use this command", ephemeral=True)
+        return
     try:
         file = open(f"atis_database/{airport.lower()}.atis", "rb")
         atis: bot_functions.ATIS = pickle.load(file)
@@ -111,7 +123,7 @@ async def edit_atis(ctx: discord.Interaction, airport: str, option: Literal["win
 
 @bot.tree.command(name="say", description="Says something in the provided channel id or in the current channel", guilds=guilds)
 async def say(ctx: discord.Interaction, message: str, channel_id: str="0"):
-    if not check_permissions(ctx, perms):
+    if not check_permissions(ctx, Permissions.DIRECTORS_ONLY):
         await ctx.response.send_message("You do not have permission to use this command", ephemeral=True)
         return
     try:
@@ -128,6 +140,9 @@ async def say(ctx: discord.Interaction, message: str, channel_id: str="0"):
 
 @bot.tree.command(name="delete_all_atis", description="Deletes all active ATIS's", guilds=guilds)
 async def delete_all_atis(ctx: discord.Interaction):
+    if not check_permissions(ctx, Permissions.DIRECTORS_ONLY):
+        await ctx.response.send_message("You do not have permission to use this command", ephemeral=True)
+        return
     file_list = os.listdir("atis_database")
     i = 0
     for file_name in file_list:
@@ -143,6 +158,9 @@ async def delete_all_atis(ctx: discord.Interaction):
 
 @bot.tree.command(name="loa", description="Creates a new LOA notification for you", guilds=guilds)
 async def loa(ctx: discord.Interaction, department: Literal["operations", "events", "moderation", "all"], reason: str=""):
+    if not check_permissions(ctx, Permissions.STAFF_ONLY):
+        await ctx.response.send_message("You do not have permission to use this command", ephemeral=True)
+        return
     loa: bot_functions.LOA = bot_functions.LOA(ctx.user.id, reason)
     file: BufferedWriter
     i = 0

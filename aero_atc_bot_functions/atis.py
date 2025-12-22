@@ -7,6 +7,7 @@ from random import randint
 from time import time, gmtime, strftime
 import pickle
 from io import BufferedWriter, BufferedReader
+import os
 
 class ATIS():
 
@@ -216,3 +217,25 @@ async def edit_atis(ctx: discord.Interaction, airport: str,
                                         ephemeral=True)
         print(f"Strange error occured, investigate:\n{e}")
         return
+
+@discord.app_commands.command(description="Delete an already existing ATIS")
+async def delete_atis(ctx: discord.Interaction, airport: str):
+
+    if not await check_permissions(ctx, Permissions.CONTROLLERS_ONLY):
+        return
+    
+    if os.path.exists(f".atis_database/{airport}.atis"):
+        try:
+            atis_r_file: BufferedReader = open(f".atis_database/{airport}.atis", "rb")
+            atis: ATIS = pickle.load(atis_r_file)
+            # This could cause an error if run in a strange channel type like a forum, pehaps only allow in atis channel
+            original_message: discord.Message = await ctx.channel.fetch_message(atis.message_id) #type: ignore
+            await original_message.delete()
+            atis_r_file.close()
+            os.remove(f".atis_database/{airport.lower()}.atis")
+            await ctx.response.send_message(f"ATIS for {airport.upper()} has been deleted", ephemeral=True)
+        except Exception as e:
+            await ctx.response.send_message("An unknown error has occured", ephemeral=True)
+            print(f"Strange error occured, investigate:\n{e}")
+    else:
+        await ctx.response.send_message(f"No ATIS found for {airport.upper()}", ephemeral=True)

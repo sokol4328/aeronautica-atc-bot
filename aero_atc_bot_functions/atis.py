@@ -1,32 +1,39 @@
 import discord.app_commands
 from discord import Interaction, ForumChannel, GroupChannel, CategoryChannel, Interaction, Message
 from .permissions import has_any_role, RoleIDs
-from .metar import Metar
 from typing import Literal, cast
 from random import randint
 from time import time, gmtime, strftime
-import pickle
-from io import BufferedWriter, BufferedReader
+import json
+from io import TextIOWrapper, BufferedReader
 import os
 
 class ATIS():
 
     def __init__(self, airport: str, runways: str, server_code: str, wind: str, temperature: str, dewpoint: str,
                  pressure: str, clouds: str, visibility: str, departure_runways: str, dispatch_station: str,
-                 dispatch_frequency: str, transition_level: str, pdc: bool):
+                 dispatch_frequency: str, transition_level: str, pdc: bool, atis_letter: int, message_id: int):
         self.airport: str = airport.upper()
         self.runways: str = runways.upper()
         self.server_code: str = server_code.upper()
-        self.metar: Metar = Metar(pressure, wind, temperature, dewpoint, clouds, visibility)
+        self.pressure: str = pressure
+        self.wind: str = wind
+        self.temperature: str = temperature
+        self.dewpoint: str = dewpoint
+        self.clouds: str = clouds
+        self.visibility: str = visibility
         self.departure_runways: str = departure_runways.upper()
         self.dispatch_station: str = dispatch_station.upper()
         self.dispatch_frequency: str = dispatch_frequency
         self.transition_level: str = transition_level
         self.pdc: bool = pdc
-        self.atis_letter: int = randint(0, 25)
-        self.message_id: int
+        if atis_letter != -1:
+            self.atis_letter: int = randint(0, 25)
+        else:
+            self.atis_letter = atis_letter
+        self.message_id = message_id
 
-    # Eventually this method will automatically find the FIR of an airport based on the ICAO code TODO
+    # Eventually this method will automatically find the FIR of an airport based on the ICAO code, TODO
     def fetch_fir(self) -> Literal["FAA", "CAA", "ICAO"]:
         return "FAA"
     
@@ -40,17 +47,17 @@ class ATIS():
     def edit_atis(self, option: str, value: str) -> None:
         match option:
             case "wind":
-                self.metar.wind = value
+                self.wind = value
             case "temperature":
-                self.metar.temperature = value
+                self.temperature = value
             case "dewpoint":
-                self.metar.dewpoint = value
+                self.dewpoint = value
             case "pressure":
-                self.metar.pressure = value
+                self.pressure = value
             case "clouds":
-                self.metar.clouds = value
+                self.clouds = value
             case "visibility":
-                self.metar.visibility = value
+                self.visibility = value
             case "runways":
                 self.runways = value
             case "depature_runways":
@@ -66,6 +73,85 @@ class ATIS():
                     self.pdc = False
             case "server_code":
                 self.server_code = value
+
+    def metar(self, fir: Literal["FAA", "CAA", "ICAO"]):
+
+        metar: str = ""
+
+        if (self.wind == "" and self.temperature == "" and self.dewpoint == "" and self.clouds == "" and
+            self.visibility == ""):
+            if fir == "FAA":
+                return f"METAR UNAVAIL A{self.pressure}"
+            return f"METAR UNAVAIL QNH {self.pressure}"
+        
+        match fir:
+            case "FAA":
+                if self.wind == "":
+                    metar += "WIND UNAVAIL "
+                else:
+                    metar += f"{self.wind}KT "
+                if self.visibility == "":
+                    metar += "VISIBILITY UNAVAIL "
+                else:
+                    metar += f"{self.visibility}SM "
+                if self.clouds == "":
+                    metar += "CLOUDS UNAVAIL "
+                else:
+                    metar += f"{self.clouds} "
+                if self.temperature == "":
+                    metar += "TEMPERATURE UNAVAIL/"
+                else:
+                    metar += f"{self.temperature}/"
+                if self.dewpoint == "":
+                    metar += "DEWPOINT UNAVAIL "
+                else:
+                    metar += f"{self.dewpoint} "
+                metar += f"A{self.pressure}"
+            case "CAA":
+                if self.wind == "":
+                    metar += "WIND UNAVAIL "
+                else:
+                    metar += f"{self.wind}KT "
+                if self.visibility == "":
+                    metar += "VISIBILITY UNAVAIL "
+                else:
+                    metar += f"{self.visibility}M "
+                if self.clouds == "":
+                    metar += "CLOUDS UNAVAIL "
+                else:
+                    metar += f"{self.clouds} "
+                if self.temperature == "":
+                    metar += "TEMPERATURE UNAVAIL/"
+                else:
+                    metar += f"{self.temperature}/"
+                if self.dewpoint == "":
+                    metar += "DEWPOINT UNAVAIL "
+                else:
+                    metar += f"{self.dewpoint} "
+                metar += f"QNH {self.pressure}"
+            case "ICAO":
+                if self.wind == "":
+                    metar += "WIND UNAVAIL "
+                else:
+                    metar += f"WIND {self.wind}KT "
+                if self.visibility == "":
+                    metar += "VIS UNAVAIL "
+                else:
+                    metar += f"VIS {self.visibility}M "
+                if self.clouds == "":
+                    metar += "CLD UNAVAIL "
+                else:
+                    metar += f"{self.clouds} "
+                if self.temperature == "":
+                    metar += "T UNAVAIL "
+                else:
+                    metar += f"T{self.temperature} "
+                if self.dewpoint == "":
+                    metar += "DEWPOINT UNAVAIL "
+                else:
+                    metar += f"D{self.dewpoint} "
+                metar += f"QNH {self.pressure}"
+        return metar
     
     def to_string(self) -> str:
         atis: str = ""
@@ -75,7 +161,7 @@ class ATIS():
             # FAA Style ATIS
             case "FAA":
                 atis += f"`{self.airport} ATIS INFO {self.get_atis_letter()} {strftime("%H%MZ", gmtime(time()))}\n"
-                atis += self.metar.to_string("FAA") + "\n"
+                atis += self.metar("FAA") + "\n"
                 approach = self.runways[0:3].upper()
                 if approach != "ILS" or approach != "VOR" or approach != "RNV" or approach != "LOC":
                     atis += f"VISUAL APCH RWY(S) {self.runways}\n"
@@ -94,14 +180,14 @@ class ATIS():
                 atis += f"...ADVIS YOU HAVE {self.get_atis_letter()}`"
                 return atis
             
-            # CAA Style ATIS TODO
+            # CAA Style ATIS
             case "CAA":
                 atis += f"`{self.airport} ATIS INFO {self.get_atis_letter()} TIME {strftime("%H%MZ", gmtime(time()))}\n"
                 if self.departure_runways == "":
                     atis += f"DEP RWY {self.runways} ARR RWY {self.runways} IN USE\n"
                 else:
                     atis += f"DEP RWY {self.departure_runways} ARR RWY {self.runways} IN USE\n"
-                atis += (self.metar.to_string("CAA") + "\n")
+                atis += (self.metar("CAA") + "\n")
                 if self.transition_level == "":
                     atis += f"TRANSITION LEVEL 060\n"
                 else:
@@ -116,7 +202,7 @@ class ATIS():
                 atis += f"SERVER CODE {self.server_code}`"
                 return atis
 
-            # ICAO Style ATIS TODO
+            # ICAO Style ATIS
             case "ICAO":
                 atis += f"`{self.airport} ATIS {self.get_atis_letter()} {strftime("%H%MZ", gmtime(time()))}\n"
                 if self.departure_runways == "":
@@ -128,7 +214,7 @@ class ATIS():
                     atis += f"EXP VISUAL APCH\n"
                 else:
                     atis += f"EXP {approach} APCH\n"
-                self.metar.to_string("ICAO")
+                self.metar("ICAO")
                 atis += f"TEXT PILOTS USE `<#1253808325129408552>` | "
                 if self.pdc:
                     atis += f"PDC AVAIL\n"
@@ -138,6 +224,7 @@ class ATIS():
                 atis += f"ACKNOWLEDGE INFO {self.get_atis_letter()} ON FIRST CTC WITH APP OR DEL`"
                 return atis
 
+# !! There is a lot of string shenanigans going on up there but down here is the real meat and potatoes !!
 
 @discord.app_commands.command(description="Creates a new airport ATIS")
 @has_any_role(RoleIDs.CONTROLLERS)
@@ -148,14 +235,15 @@ async def generate_atis(ctx: Interaction, airport: str, runways: str, server_cod
     
     #Creating the ATIS object
     atis = ATIS(airport, runways, server_code, wind, temperature, dewpoint, pressure, clouds, visibility,
-                departure_runways, dispatch_station, dispatch_frequency, transition_level, pdc)
+                departure_runways, dispatch_station, dispatch_frequency, transition_level, pdc, 0, 0)
     
     # Dumping the ATIS object into a pickle file for storage in the database
     try:
-        atis_file: BufferedWriter = open(f".atis_database/{airport}.atis", "xb")
-        reponse = await ctx.response.send_message(atis.to_string())
-        atis.message_id = cast(int, reponse.message_id)
-        pickle.dump(atis, atis_file)
+        with open(f".atis_database/{airport}.json", "xt") as atis_file:
+            await ctx.response.send_message(atis.to_string())
+            original_message: discord.InteractionMessage = await ctx.original_response()
+            atis.message_id = original_message.id
+            json.dump(atis.__dict__, atis_file)
     
     # If an ATIS already exists, the user will be informed
     except FileExistsError:
@@ -173,8 +261,8 @@ async def edit_atis(ctx: discord.Interaction, airport: str,
     
     # Loading the ATIS from the database, or informing the user if it does not exist
     try:
-        atis_r_file: BufferedReader = open(f".atis_database/{airport}.atis", "rb")
-        atis: ATIS = pickle.load(atis_r_file)
+        atis_r_file: BufferedReader = open(f".atis_database/{airport}.json", "rb")
+        atis: ATIS = ATIS(**json.load(atis_r_file))
         atis_r_file.close()
     except FileNotFoundError:
         await ctx.response.send_message("ATIS for airport not found, try generate_atis instead", ephemeral = True)
@@ -203,9 +291,10 @@ async def edit_atis(ctx: discord.Interaction, airport: str,
     
     # Re-opening the ATIS database file and rewritting it with the new information
     try:
-        atis_w_file: BufferedWriter = open(f".atis_database/{airport}.atis", "wb")
-        pickle.dump(atis, atis_w_file)
+        atis_w_file: TextIOWrapper = open(f".atis_database/{airport}.json", "w")
+        json.dump(atis.__dict__, atis_w_file)
         atis_w_file.close()
+        await ctx.response.send_message(f"ATIS for {airport.upper()} has been edited", ephemeral = True)
     except Exception as e:
         await ctx.response.send_message("An unknown error has occured while writing to the ATIS database",
                                         ephemeral=True)
@@ -213,21 +302,22 @@ async def edit_atis(ctx: discord.Interaction, airport: str,
         return
 
 @discord.app_commands.command(description="Delete an already existing ATIS")
-@has_any_role(RoleIDs.CONTROLLERS)
+@has_any_role(RoleIDs.CONTROLLERS, admin_bypass=True)
 async def delete_atis(ctx: discord.Interaction, airport: str):
     
-    if os.path.exists(f".atis_database/{airport}.atis"):
+    if os.path.exists(f".atis_database/{airport}.json"):
         try:
-            atis_r_file: BufferedReader = open(f".atis_database/{airport}.atis", "rb")
-            atis: ATIS = pickle.load(atis_r_file)
+            atis_r_file: BufferedReader = open(f".atis_database/{airport}.json", "rb")
+            atis: ATIS = ATIS(**json.load(atis_r_file))
             # This could cause an error if run in a strange channel type like a forum, pehaps only allow in atis channel
             original_message: discord.Message = await ctx.channel.fetch_message(atis.message_id) #type: ignore
             await original_message.delete()
             atis_r_file.close()
-            os.remove(f".atis_database/{airport.lower()}.atis")
+            os.remove(f".atis_database/{airport.lower()}.json")
             await ctx.response.send_message(f"ATIS for {airport.upper()} has been deleted", ephemeral=True)
         except Exception as e:
             await ctx.response.send_message("An unknown error has occured", ephemeral=True)
             print(f"Strange error occured, investigate:\n{e}")
     else:
         await ctx.response.send_message(f"No ATIS found for {airport.upper()}", ephemeral=True)
+# ^!!^ FIX THIS TO MAKE IT MORE ERROR PROOF, TODO ^!!^

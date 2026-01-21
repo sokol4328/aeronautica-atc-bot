@@ -2,6 +2,7 @@ from discord.ext.commands.bot import Bot
 import discord.utils
 from discord import Object, Intents
 import aero_atc_bot_functions
+from os import remove
 
 class AeroATCBot(Bot):
 
@@ -11,11 +12,6 @@ class AeroATCBot(Bot):
     
     def __init__(self):
         super().__init__(command_prefix=":)", intents=Intents.all())
-    
-    def run_with_token(self):
-        file = open("token.txt", "r")
-        token = file.read()
-        self.run(token=token)
 
     async def add_all_commands(self):
         for command in aero_atc_bot_functions.ALL_COMMANDS:
@@ -25,4 +21,9 @@ class AeroATCBot(Bot):
     
     async def on_ready(self):
         print(f"Logged in as {self.user} at {discord.utils.utcnow().time()}")
+        # !! REMOVE THIS LATER, DEBUG FUNCTIONALITY, TODO !!
+        try:
+            remove(f".atis_database/kcia.json")
+        except:
+            pass
         await self.add_all_commands()

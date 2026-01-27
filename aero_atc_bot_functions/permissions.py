@@ -15,9 +15,7 @@ class RoleIDs:
     VERIFIED = {config["permissions"]["verified"]}
 
 def has_role(required_role: set, admin_bypass: bool = False):
-
     async def predicate(ctx: Interaction) -> bool:
-
         if not isinstance(ctx.user, Member):
             await ctx.response.send_message("This command must be used in a server", ephemeral=True)
             return False
@@ -36,5 +34,4 @@ def has_role(required_role: set, admin_bypass: bool = False):
             return False
             
         return True
-    
     return app_commands.check(predicate)

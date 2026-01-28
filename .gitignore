@@ -1,6 +1,6 @@
 __pycache__/
-.atis_database/
-.loa_database/
+atis_database/*
+loa_database/*
 .env
 .vscode/
 .idea

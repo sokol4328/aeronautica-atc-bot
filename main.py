@@ -10,15 +10,11 @@ with open("config.json", "r", encoding="utf-8") as f:
 LOG_LEVEL = config["logging"]["level"]
 LOG_FILE = config["logging"]["log_file"]
 
-
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
 
 handler = logging.FileHandler(filename=LOG_FILE, encoding='utf-8', mode='w')
 
-def main():
+if __name__ == "__main__":
     bot = AeroATCBot()
     bot.run(TOKEN, log_handler=handler, log_level=logging.getLevelName(LOG_LEVEL))
-
-if __name__ == "__main__":
-    main()

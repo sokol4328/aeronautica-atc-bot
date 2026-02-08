@@ -21,7 +21,7 @@ async def generate_squawk(ctx: Interaction):
     for i in range(4):
         squawk += str(randint(0,7))
     print(f"Generated squawk code: {squawk} by {ctx.user.display_name}")
-    if squawk in {"1200", "7000", "7500", "7600", "7700", "7777"}:
+    if squawk in {"1200", "7000", "7500", "7600", "7700", "7777", "0000"}:
         await ctx.response.send_message("Unknown error, please try again.", ephemeral=True)
     await ctx.response.send_message(f"Generated squawk code: {squawk}", ephemeral=True)
 

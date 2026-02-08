@@ -1,6 +1,6 @@
 import discord.app_commands
-from discord import Interaction, ForumChannel, GroupChannel, CategoryChannel, Interaction, Message
-from .permissions import has_any_role, RoleIDs
+from discord import ForumChannel, GroupChannel, CategoryChannel, Interaction, Message
+from .permissions import has_role, RoleIDs
 from typing import Literal, cast
 from random import randint
 from time import time, gmtime, strftime
@@ -11,13 +11,12 @@ import os
 class ATIS():
 
     def __init__(self, airport: str, runways: str, server_code: str, wind: str, temperature: str, dewpoint: str,
-                 pressure: str, weather_observations: str, clouds: str, visibility: str, departure_runways: str, dispatch_station: str,
+                 pressure: str, clouds: str, visibility: str, departure_runways: str, dispatch_station: str,
                  dispatch_frequency: str, transition_level: str, pdc: bool, atis_letter: int, message_id: int):
         self.airport: str = airport.upper()
         self.runways: str = runways.upper()
         self.server_code: str = server_code.upper()
         self.pressure: str = pressure
-        self.weather_observations: str = weather_observations
         self.wind: str = wind
         self.temperature: str = temperature
         self.dewpoint: str = dewpoint
@@ -36,7 +35,7 @@ class ATIS():
 
     # Eventually this method will automatically find the FIR of an airport based on the ICAO code, TODO
     def fetch_fir(self) -> Literal["FAA", "CAA", "ICAO"]:
-        return "CAA"
+        return "FAA"
     
     # This method converts an integer 0-25 into the corresponding letter (1 being A, 2 being B and so on)
     def get_atis_letter(self) -> str:
@@ -55,8 +54,6 @@ class ATIS():
                 self.dewpoint = value
             case "pressure":
                 self.pressure = value
-            case "weather_observations":
-                self.weather_observations = value
             case "clouds":
                 self.clouds = value
             case "visibility":
@@ -81,8 +78,8 @@ class ATIS():
 
         metar: str = ""
 
-        if (self.wind == "" and self.temperature == "" and self.dewpoint == "" and self.weather_observations == "" and
-            self.clouds == "" and self.visibility == ""):
+        if (self.wind == "" and self.temperature == "" and self.dewpoint == "" and self.clouds == "" and
+            self.visibility == ""):
             if fir == "FAA":
                 return f"METAR UNAVAIL A{self.pressure}"
             return f"METAR UNAVAIL QNH {self.pressure}"
@@ -112,23 +109,23 @@ class ATIS():
                 metar += f"A{self.pressure}"
             case "CAA":
                 if self.wind == "":
-                    metar += "/////KT "
+                    metar += "WIND UNAVAIL "
                 else:
                     metar += f"{self.wind}KT "
                 if self.visibility == "":
-                    metar += "//// "
+                    metar += "VISIBILITY UNAVAIL "
                 else:
-                    metar += f"{self.visibility} "
+                    metar += f"{self.visibility}M "
                 if self.clouds == "":
-                    metar += "////// "
+                    metar += "CLOUDS UNAVAIL "
                 else:
                     metar += f"{self.clouds} "
                 if self.temperature == "":
-                    metar += "///"
+                    metar += "TEMPERATURE UNAVAIL/"
                 else:
                     metar += f"{self.temperature}/"
                 if self.dewpoint == "":
-                    metar += "// "
+                    metar += "DEWPOINT UNAVAIL "
                 else:
                     metar += f"{self.dewpoint} "
                 metar += f"QNH {self.pressure}"
@@ -163,7 +160,7 @@ class ATIS():
 
             # FAA Style ATIS
             case "FAA":
-                atis += f"`{self.airport} ATIS INFO {self.get_atis_letter()} {strftime('%H%MZ', gmtime(time()))}\n"
+                atis += f"`{self.airport} ATIS INFO {self.get_atis_letter()} {strftime('%I:%MZ', gmtime(time()))}\n"
                 atis += self.metar("FAA") + "\n"
                 approach = self.runways[0:3].upper()
                 if approach != "ILS" or approach != "VOR" or approach != "RNV" or approach != "LOC":
@@ -185,7 +182,7 @@ class ATIS():
             
             # CAA Style ATIS
             case "CAA":
-                atis += f"`{self.airport} ATIS INFO {self.get_atis_letter()} TIME {strftime('%H%MZ', gmtime(time()))}\n"
+                atis += f"`{self.airport} ATIS INFO {self.get_atis_letter()} TIME {strftime('%I:%MZ', gmtime(time()))}\n"
                 if self.departure_runways == "":
                     atis += f"DEP RWY {self.runways} ARR RWY {self.runways} IN USE\n"
                 else:
@@ -207,7 +204,7 @@ class ATIS():
 
             # ICAO Style ATIS
             case "ICAO":
-                atis += f"`{self.airport} ATIS {self.get_atis_letter()} {strftime('%H%MZ', gmtime(time()))}\n"
+                atis += f"`{self.airport} ATIS {self.get_atis_letter()} {strftime('%I:%MZ', gmtime(time()))}\n"
                 if self.departure_runways == "":
                     atis += f"DEPARTURES {self.runways}. ARRIVALS {self.runways}\n"
                 else:
@@ -230,16 +227,15 @@ class ATIS():
 # !! There is a lot of string shenanigans going on up there but down here is the real meat and potatoes !!
 
 @discord.app_commands.command(description="Creates a new airport ATIS")
-@has_any_role(RoleIDs.CONTROLLERS)
-async def generate_atis(ctx: Interaction, airport: str, runways: str, server_code: str, pressure: str,
-                        weather_observations: str, wind: str = "", temperature: str = "", dewpoint: str = "",
-                        clouds: str = "", visibility: str = "", departure_runways: str = "",
-                        dispatch_station: str = "UNICOM", dispatch_frequency: str = "122.800",
-                        transition_level: str = "", pdc: bool = False):
+@has_role(RoleIDs.CONTROLLER)
+async def generate_atis(ctx: Interaction, airport: str, runways: str, server_code: str, pressure: str, wind: str = "",
+                        temperature: str = "", dewpoint: str = "", clouds: str = "", visibility: str = "",
+                        departure_runways: str = "", dispatch_station: str = "UNICOM",
+                        dispatch_frequency: str = "122.800", transition_level: str = "", pdc: bool = False):
     
     #Creating the ATIS object
-    atis = ATIS(airport, runways, server_code, wind, temperature, dewpoint, pressure, weather_observations, clouds,
-                visibility, departure_runways, dispatch_station, dispatch_frequency, transition_level, pdc, 0, 0)
+    atis = ATIS(airport, runways, server_code, wind, temperature, dewpoint, pressure, clouds, visibility,
+                departure_runways, dispatch_station, dispatch_frequency, transition_level, pdc, 0, 0)
     
     # Dumping the ATIS object into a pickle file for storage in the database
     try:
@@ -256,11 +252,11 @@ async def generate_atis(ctx: Interaction, airport: str, runways: str, server_cod
         return
 
 @discord.app_commands.command(description="Edit an already existing ATIS")
-@has_any_role(RoleIDs.CONTROLLERS)
+@has_role(RoleIDs.CONTROLLER)
 async def edit_atis(ctx: discord.Interaction, airport: str,
-                    option: Literal["wind", "temperature", "dewpoint", "pressure", "weather_observations", "clouds",
-                                    "visibility", "runways", "departure_runways", "dispatch_station",
-                                    "dispatch_frequency", "pdc_availability", "server_code"],
+                    option: Literal["wind", "temperature", "dewpoint", "pressure", "clouds", "visibility", "runways",
+                                    "departure_runways", "dispatch_station", "dispatch_frequency", "pdc_availability",
+                                    "server_code"],
                     value: str, update_letter: bool=False):
     
     # Loading the ATIS from the database, or informing the user if it does not exist
@@ -306,7 +302,7 @@ async def edit_atis(ctx: discord.Interaction, airport: str,
         return
 
 @discord.app_commands.command(description="Delete an already existing ATIS")
-@has_any_role(RoleIDs.CONTROLLERS, admin_bypass=True)
+@has_role(RoleIDs.CONTROLLER, admin_bypass=True)
 async def delete_atis(ctx: discord.Interaction, airport: str):
     
     if os.path.exists(f".atis_database/{airport}.json"):

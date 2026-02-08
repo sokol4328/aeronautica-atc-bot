@@ -1,0 +1,32 @@
+{
+  "bot": {
+    "prefix": ":)",
+
+    "guild_id": 1450782993840082977
+  },
+
+  "aeroPermissions": {
+    "ambassador": 1175138965054042212,
+    "director": 1180831972440944750,
+    "manager": 1197132105147232266,
+    "atc_staff": 1292556748774838405,
+    "event_host": 1168188270660821013,
+    "controller": 1168202336942948393,
+    "verified": 1120128265668022292
+  },
+
+  "permissions":{
+    "ambassador": 1450810523200524290,
+    "director": 1450810523200524290,
+    "manager": 1450810523200524290,
+    "atc_staff": 1450810523200524290,
+    "event_host": 1450810523200524290,
+    "controller": 1450810523200524290,
+    "verified": 1450810523200524290
+  },
+
+  "logging": {
+    "level": "DEBUG",
+    "log_file": "discord.log"
+  }
+}

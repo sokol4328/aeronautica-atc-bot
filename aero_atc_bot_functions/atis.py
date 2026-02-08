@@ -1,6 +1,6 @@
 import discord.app_commands
-from discord import Interaction, ForumChannel, GroupChannel, CategoryChannel, Interaction, Message
-from .permissions import has_any_role, RoleIDs
+from discord import ForumChannel, GroupChannel, CategoryChannel, Interaction, Message
+from .permissions import has_role, RoleIDs
 from typing import Literal, cast
 from random import randint
 from time import time, gmtime, strftime
@@ -82,7 +82,7 @@ class ATIS():
         metar: str = ""
 
         if (self.wind == "" and self.temperature == "" and self.dewpoint == "" and self.weather_observations == "" and
-            self.clouds == "" and self.visibility == ""):
+                self.clouds == "" and self.visibility == ""):
             if fir == "FAA":
                 return f"METAR UNAVAIL A{self.pressure}"
             return f"METAR UNAVAIL QNH {self.pressure}"
@@ -242,7 +242,7 @@ class ATIS():
 # !! There is a lot of string shenanigans going on up there but down here is the real meat and potatoes !!
 
 @discord.app_commands.command(description="Creates a new airport ATIS")
-@has_any_role(RoleIDs.CONTROLLERS)
+@has_role(RoleIDs.CONTROLLER)
 async def generate_atis(ctx: Interaction, airport: str, runways: str, server_code: str, pressure: str,
                         weather_observations: str = "", wind: str = "", temperature: str = "", dewpoint: str = "",
                         clouds: str = "", visibility: str = "", departure_runways: str = "",
@@ -268,7 +268,7 @@ async def generate_atis(ctx: Interaction, airport: str, runways: str, server_cod
         return
 
 @discord.app_commands.command(description="Edit an already existing ATIS")
-@has_any_role(RoleIDs.CONTROLLERS)
+@has_role(RoleIDs.CONTROLLER)
 async def edit_atis(ctx: discord.Interaction, airport: str,
                     option: Literal["wind", "temperature", "dewpoint", "pressure", "weather_observations", "clouds",
                                     "visibility", "runways", "departure_runways", "clearance_station",
@@ -318,7 +318,7 @@ async def edit_atis(ctx: discord.Interaction, airport: str,
         return
 
 @discord.app_commands.command(description="Delete an already existing ATIS")
-@has_any_role(RoleIDs.CONTROLLERS, admin_bypass=True)
+@has_role(RoleIDs.CONTROLLER, admin_bypass=True)
 async def delete_atis(ctx: discord.Interaction, airport: str):
     
     if os.path.exists(f".atis_database/{airport}.json"):

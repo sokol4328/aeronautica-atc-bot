@@ -7,9 +7,9 @@ with open("config.json", "r", encoding="utf-8") as f:
 # Using sets for O(1) lookups
 class RoleIDs:
     AMBASSADOR = {config["aeroPermissions"]["ambassador"]}
-    DIRECTOR = {config["aeroPermissions"]["director"], config["aeroPermissions"]["director"]}
-    MANAGER = {config["aeroPermissions"]["manager"], config["aeroPermissions"]["director"],
-               config["aeroPermissions"]["director"]}
+    DIRECTOR = {config["aeroPermissions"]["ambassador"], config["aeroPermissions"]["director"]}
+    MANAGER = {config["aeroPermissions"]["ambassador"], config["aeroPermissions"]["director"],
+               config["aeroPermissions"]["manager"]}
     ATC_STAFF = {config["aeroPermissions"]["atc_staff"]}
     EVENT_HOST = {config["aeroPermissions"]["event_host"]}
     CONTROLLER = {config["aeroPermissions"]["controller"]}

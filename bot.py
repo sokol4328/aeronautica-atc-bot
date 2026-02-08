@@ -1,8 +1,9 @@
 from discord.ext.commands.bot import Bot
+from discord.app_commands import Command, ContextMenu
 import discord.utils
-from discord import Object, Intents
+from discord import Object, Intents, Interaction, DMChannel
 import aero_atc_bot_functions
-from os import remove
+from typing import Union
 import json
 
 with open("config.json", "r", encoding="utf-8") as f:
@@ -26,12 +27,15 @@ class AeroATCBot(Bot):
         await self.tree.sync(guild=self.guild_id)
         print("Commands have been loaded")
     
+    async def on_app_command_completion(self, interaction: Interaction, command: Union[Command, ContextMenu]):
+        if interaction.command == None or interaction.channel == None or interaction.channel is DMChannel:
+            print(f"Strange error occured, investigate:\nIn on_command in bot.py, None occured when it shouldn't have")
+            return
+        print(f"Command {interaction.command.name} was used by {interaction.user.name} " +
+              f"in {interaction.channel.name} at {discord.utils.utcnow().time()}") # type: ignore
+
     async def on_ready(self):
         await self.add_all_commands()
-        await self.change_presence(status=discord.Status("online"), activity=discord.Game(name=f"Watching over the AATC community"))
+        await self.change_presence(status=discord.Status("online"),
+                                   activity=discord.Game(name=f"Watching over the AATC community"))
         print(f"Logged in as {self.user} at {discord.utils.utcnow().time()}")
-        # !! REMOVE THIS LATER, DEBUG FUNCTIONALITY, TODO !!
-        try:
-            remove(f".atis_database/kcia.json")
-        except:
-            pass

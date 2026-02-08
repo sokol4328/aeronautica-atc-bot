@@ -293,7 +293,7 @@ async def edit_atis(ctx: discord.Interaction, airport: str,
     # Finding the original message, command must be executed in the same channel as the original message
     channel = ctx.channel
     if isinstance(channel, ForumChannel) or isinstance(channel, CategoryChannel) or isinstance(channel, GroupChannel):
-        print(f"Strange error occured, investigate:\nLine 140 in atis.py, expected type not found")
+        print(f"Strange error occured, investigate:\nIn edit_atis in atis.py, expected type not found")
         await ctx.response.send_message("Cannot edit ATIS in this type of channel", ephemeral = True)
         return
     if channel is not None:
@@ -303,7 +303,7 @@ async def edit_atis(ctx: discord.Interaction, airport: str,
         await original_atis.edit(content = atis.to_string())
     else:
         await ctx.response.send_message("Unknown error has occured", ephemeral=True)
-        print(f"Strange error occured, investigate:\nLine 143 in atis.py, None occured when it shouldn't have")
+        print(f"Strange error occured, investigate:\nIn edit_atis in atis.py, None occured when it shouldn't have")
         return
     
     # Re-opening the ATIS database file and rewritting it with the new information
